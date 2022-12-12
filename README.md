@@ -1,5 +1,4 @@
-## CAP6617FinalProject
-#Voice Conversion
+## CAP6617FinalProject: Voice Conversion
 Aims to convert a sentence uttered by a source speaker to sound like the voice of the target speaker saying it.
 
 GetFeatures.m is a Matlab file that uses the STRAIGHT vocoder library to extract audio features from the source and target speakers.
