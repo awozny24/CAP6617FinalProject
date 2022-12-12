@@ -340,10 +340,23 @@ def trainModel(model, optimizer, criteria, trainLoader, valLoader, Epochs=100, p
 
 
 
+class KLDiv(nn.Module):
+    def __init__(self):
+        super(KLDiv, self).__init__()
+        
+        
+    def forward(self, z_mean, z_var):
+        # loss function is mel cepstral distortion
+        return  0.5 * torch.sum(torch.exp(z_var) + torch.square(z_mean) - 1.0 - z_var)  
+    
+    
 def trainVAEModel(model, optimizer, criteria, trainLoader, valLoader, Epochs=100, path="checkpoint.pt", device=None, patience=10):
 
     train_loss = []
     val_loss = []
+    
+    KLDiv1  = KLDiv()
+    KLDiv2  = KLDiv()
     
     best_val_loss = np.Inf
     stopCount = 0
@@ -374,20 +387,24 @@ def trainVAEModel(model, optimizer, criteria, trainLoader, valLoader, Epochs=100
             # forward and backward pass for source data
             optimizer.zero_grad()
             model.module.setDecoder('s')
-            pred = model(X)
+            pred, z_mean, z_var = model(X)
             loss1 = criteria(pred, X)
-            loss1.backward()
+            klloss1 = KLDiv1(z_mean, z_var)
+            loss1.backward(retain_graph=True)
+            klloss1.backward()
             optimizer.step()
-            lossSum += loss1.item()
+            lossSum += loss1.item() + klloss1
             
             # forward and backward pass for target data
             optimizer.zero_grad()
             model.module.setDecoder('t')
-            pred = model(y)
+            pred,  z_mean, z_var = model(y)
             loss2 = criteria(pred, y)
-            loss2.backward()
+            klloss2 = KLDiv2(z_mean, z_var)
+            loss2.backward(retain_graph=True)
+            klloss2.backward()
             optimizer.step()
-            lossSum += loss2.item()
+            lossSum += loss2.item() + klloss2
             
 
         train_loss.append(lossSum)
@@ -408,10 +425,12 @@ def trainVAEModel(model, optimizer, criteria, trainLoader, valLoader, Epochs=100
                 
                 # calculate validation loss and add to running sum
                 model.module.setDecoder('s')
-                valLoss = criteria(model(Xval), Xval)
+                pred, z_mean, z_var = model(Xval)
+                valLoss = criteria(pred, Xval)
                 valLossSum += valLoss.item()
                 model.module.setDecoder('t')
-                valLoss = criteria(model(yval), yval)
+                pred, z_mean, z_var = model(yval)
+                valLoss = criteria(pred, yval)
                 valLossSum += valLoss.item()
 
         # append to running validation loss
@@ -443,7 +462,6 @@ def trainVAEModel(model, optimizer, criteria, trainLoader, valLoader, Epochs=100
             return model, train_loss, val_loss
         
     return model, train_loss, val_loss
-
 
 
 

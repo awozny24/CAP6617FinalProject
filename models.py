@@ -80,6 +80,8 @@ class VAE(nn.Module):
         for layer in self.Enc:
             torch.nn.functional.normalize(out)
             out = layer(out)
+            
+        z = out
 
         if 's' in self.decoder:
             # pass first dataset through first decoder
@@ -90,8 +92,7 @@ class VAE(nn.Module):
             for layer in self.Dec2:
                 out = layer(out)
        
-        return out
-
+        return out, torch.mean(z, axis=0), torch.var(z, axis=0)
         
 
 
